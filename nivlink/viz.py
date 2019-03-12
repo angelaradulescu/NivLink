@@ -1,4 +1,5 @@
 import os
+import numpy as np
 
 def plot_raw_blinks(fname, raw, overwrite=True, show=False):
     """Plot detected (and corrected) blinks in raw pupillometry data."""
@@ -38,4 +39,53 @@ def plot_raw_blinks(fname, raw, overwrite=True, show=False):
     ## Save/display.
     if show: show(plot)
     
-plot_raw_blinks("test", raw, show=True)
+# plot_raw_blinks("test", raw, show=True)
+
+def plot_heatmaps(info_with_aoi, raw_pos_data, contrast, config):
+    """Plot raw data heatmaps with overlaid AoIs.
+    
+    Parameters
+    ----------
+    info_with_aoi : instance of `Screen`
+        Eyetracking acquisition information with AoIs added.
+
+    raw_pos_data: array, shape(xdim, ydim) 
+        Raw x,y gaze data. 
+    contrast : array, shape(0,1)
+        Contrast for histogram plot. 
+    config : int
+        Specifies the aoi configuration we wish to display. 
+
+    Returns
+    -------
+    fig, ax : plt.figure
+        Figure and axis of plot.
+      
+    Notes
+    -----
+    Requires matplotlib.
+    """      
+
+    import matplotlib.pyplot as plt
+    import matplotlib.cm as cm
+    from matplotlib.patches import Rectangle
+
+    ## Remove NaNs.
+    mask = ~np.any(np.isnan(raw_pos_data),axis=1)
+    x = raw_pos_data[mask,0]
+    y = raw_pos_data[mask,1]
+    x_y = np.column_stack([x,y])
+
+    ## Compute 2D histogram in pixel space. 
+    xedges = np.arange(0,info_with_aoi.xdim+1)
+    yedges = np.arange(0,info_with_aoi.ydim+1)
+    H, xedges, yedges = np.histogram2d(x, y,bins=(xedges, yedges))
+    H = H.T
+
+    fig, ax = plt.subplots(1, 1, figsize=(20, 20));
+    ax.imshow(H, interpolation='bilinear', cmap=cm.gnuplot, clim=(contrast[0], contrast[1]));
+    ax.imshow(info_with_aoi.indices[:,:,config-1].T, alpha = 0.2, cmap = cm.gray)
+    ax.set_xticks([]);
+    ax.set_yticks([]);
+
+    return fig, ax
